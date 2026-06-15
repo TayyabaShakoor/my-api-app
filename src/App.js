@@ -1,54 +1,47 @@
 // src/App.js
 import './App.css';
-import { useState, useEffect } from 'react';
-import { fetchProducts } from './services/api';
+import { useProducts } from './hooks/useProducts';
 import ProductCard from './components/ProductCard';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 function App() {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ONE line of code replaces ALL your useState + useEffect code!
+  const { data: products, isLoading, error } = useProducts();
 
-  useEffect(() => {
-    const getProducts = async () => {
-      try {
-        setIsLoading(true);
-        const productList = await fetchProducts();
-        setProducts(productList);
-        setError(null);
-      } catch (err) {
-        setError(err.message);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getProducts();
-  }, []);
-
-  // Loading State
+  // Loading State - Required by your assignment
   if (isLoading) {
-    return <div className="loading-state">Loading amazing products...</div>;
-  }
-
-  // Error State
-  if (error) {
     return (
-      <div className="error-state">
-        <h2>Oops! Something went wrong.</h2>
-        <p>We couldn't load the products. Please try again later.</p>
-        <p>Error: {error}</p>
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Loading amazing products...</p>
       </div>
     );
   }
 
-  // No Data State
-  if (products.length === 0) {
-    return <div className="no-data-state">No products found at the moment.</div>;
+  // Error State - Required by your assignment
+  if (error) {
+    return (
+      <div className="error-state">
+        <h2>⚠️ Oops! Something went wrong</h2>
+        <p>We couldn't load the products. Please try again later.</p>
+        <p className="error-details">Error: {error.message}</p>
+        <button onClick={() => window.location.reload()}>
+          Try Again
+        </button>
+      </div>
+    );
   }
 
-  // Success State - Map products to Product Cards
+  // No Data State - Fallback screen
+  if (!products || products.length === 0) {
+    return (
+      <div className="no-data-state">
+        <p>No products found at the moment.</p>
+      </div>
+    );
+  }
+
+  // Success State - Map products to cards
   return (
     <div className="App">
       <header className="app-header">
@@ -60,6 +53,9 @@ function App() {
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
+      
+      {/* Optional: React Query DevTools - shows cache, helps debugging */}
+      <ReactQueryDevtools initialIsOpen={false} />
     </div>
   );
 }
