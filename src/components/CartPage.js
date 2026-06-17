@@ -1,10 +1,12 @@
 // src/components/CartPage.js
 import useCartStore from '../store/cartStore';
+import { useNavigate } from 'react-router-dom'; // ← Add this import
 import './CartPage.css';
 import toast from 'react-hot-toast';
 
 function CartPage() {
   const { cart, totalItems, totalPrice, removeFromCart, increaseQuantity, decreaseQuantity, clearCart } = useCartStore();
+  const navigate = useNavigate(); // ← Add this
 
   const handleRemove = (productId, productTitle) => {
     removeFromCart(productId);
@@ -26,7 +28,8 @@ function CartPage() {
           <div className="empty-icon">🛒</div>
           <h2>Your Cart is Empty</h2>
           <p>Start adding some amazing products!</p>
-          <button onClick={() => window.scrollTo(0, 0)} className="shop-now-btn">
+          {/* ✅ FIX: Navigate to home page instead of scrolling */}
+          <button onClick={() => navigate('/')} className="shop-now-btn">
             🛍️ Shop Now
           </button>
         </div>

@@ -1,17 +1,72 @@
 // src/App.js
-import './App.css';
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from './hooks/useProducts';
 import ProductCard from './components/ProductCard';
 import AddProductForm from './components/AddProductForm';
 import CartPage from './components/CartPage';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import AuthGuard from './components/AuthGuard';
 import useCartStore from './store/cartStore';
+import toast from 'react-hot-toast';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import './App.css';
 
-function App() {
-  const [showCart, setShowCart] = useState(false);
+// Navigation Component
+function Navigation() {
+  // ✅ FIX: Add 'user' to the destructuring
+  const { isAuthenticated, user, logout, totalItems } = useCartStore();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    toast.success('👋 Logged out successfully!', {
+      style: {
+        background: '#e53e3e',
+        color: 'white',
+        padding: '16px 24px',
+        borderRadius: '12px',
+        fontSize: '16px',
+      },
+    });
+    navigate('/');
+  };
+
+  return (
+    <nav className="navbar">
+      <div className="nav-brand">
+        <Link to="/">🛍️ ShopVerse</Link>
+      </div>
+      <div className="nav-links">
+        <Link to="/">Home</Link>
+        <Link to="/cart" className="cart-link">
+          🛒 Cart
+          {totalItems > 0 && <span className="nav-badge">{totalItems}</span>}
+        </Link>
+        {isAuthenticated ? (
+          <>
+            <Link to="/dashboard">📊 Dashboard</Link>
+            <div className="user-email">
+              <span className="email-icon">👤</span>
+              <span className="email-text" title={user?.email || ''}>
+                {user?.email || 'User'}
+              </span>
+            </div>
+            <button onClick={handleLogout} className="logout-btn">
+              🚪 Logout
+            </button>
+          </>
+        ) : (
+          <Link to="/login" className="login-btn">🔐 Login</Link>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+// Home Page Component
+function HomePage() {
   const { data: products, isLoading, error } = useProducts();
-  const totalItems = useCartStore((state) => state.totalItems);
 
   if (isLoading) {
     return (
@@ -35,54 +90,58 @@ function App() {
   }
 
   return (
-    <div className="App">
-      {/* Header with Cart Button */}
-      <header className="app-header">
-        <div>
-          <h1>🛍️ ShopVerse</h1>
-          <p>Discover amazing products at great prices</p>
-        </div>
-        <div className="header-actions">
-          <button 
-            className="cart-button"
-            onClick={() => setShowCart(!showCart)}
-          >
-            {showCart ? '📋 View Products' : '🛒 Cart'}
-            {totalItems > 0 && !showCart && (
-              <span className="cart-badge">{totalItems}</span>
-            )}
-          </button>
-        </div>
-      </header>
+    <>
+      <div className="form-wrapper">
+        <AddProductForm />
+      </div>
 
-      {/* Show Cart OR Products */}
-      {showCart ? (
-        <CartPage />
+      <h2 className="section-title">✨ All Products</h2>
+      {products?.length === 0 ? (
+        <div className="no-data-state">
+          <p>No products found. Add some!</p>
+        </div>
       ) : (
-        <>
-          {/* Add Product Form - Centered */}
-          <div className="form-wrapper">
-            <AddProductForm />
-          </div>
-
-          {/* Products Section */}
-          <h2 className="section-title">✨ All Products</h2>
-          {products?.length === 0 ? (
-            <div className="no-data-state">
-              <p>No products found. Add some!</p>
-            </div>
-          ) : (
-            <div className="products-grid">
-              {products?.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </>
+        <div className="products-grid">
+          {products?.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       )}
+    </>
+  );
+}
 
-      <ReactQueryDevtools initialIsOpen={false} />
-    </div>
+// Main App Component
+function App() {
+  // Check authentication status on app load
+  const checkAuth = useCartStore((state) => state.checkAuth);
+  checkAuth();
+
+  return (
+    <BrowserRouter>
+      <div className="App">
+        <Navigation />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={
+            <AuthGuard>
+              <DashboardPage />
+            </AuthGuard>
+          } />
+          
+          <Route path="/cart" element={
+            <AuthGuard>
+              <CartPage />
+            </AuthGuard>
+          } />
+        </Routes>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </div>
+    </BrowserRouter>
   );
 }
 
