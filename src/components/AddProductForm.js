@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { productSchema } from '../schemas/productSchema';
 import useCartStore from '../store/cartStore';
 import toast from 'react-hot-toast';
-import './AddProductForm.css'; // Import CSS
+import { useAsyncAction } from '../hooks/useAsyncAction';
+import './AddProductForm.css';
 
 function AddProductForm() {
   const addToCart = useCartStore((state) => state.addToCart);
@@ -12,7 +13,7 @@ function AddProductForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
   } = useForm({
     resolver: zodResolver(productSchema),
@@ -25,23 +26,28 @@ function AddProductForm() {
     },
   });
 
-  const onSubmit = (data) => {
+  // ✅ Use async action hook for submit spam prevention
+  const { execute: submitProduct, isLoading } = useAsyncAction(async (data) => {
+    const imageUrl = data.image || 'https://via.placeholder.com/150/667eea/ffffff?text=New+Product';
+
     const newProduct = {
       id: Date.now(),
       title: data.title,
       price: parseFloat(data.price),
       description: data.description,
       category: data.category,
-      image: data.image || 'https://via.placeholder.com/150/667eea/ffffff?text=New',
+      image: imageUrl,
       rating: {
         rate: 0,
         count: 0,
       },
     };
 
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     addToCart(newProduct);
-    reset();
-    
+
     toast.success(`✅ ${newProduct.title} added to cart!`, {
       style: {
         background: '#48bb78',
@@ -51,6 +57,12 @@ function AddProductForm() {
         fontSize: '16px',
       },
     });
+
+    reset();
+  });
+
+  const onSubmit = (data) => {
+    submitProduct(data);
   };
 
   return (
@@ -64,6 +76,7 @@ function AddProductForm() {
           {...register('title')}
           className={errors.title ? 'error' : ''}
           placeholder="Enter product title"
+          disabled={isLoading}
         />
         {errors.title && (
           <span className="error-message">{errors.title.message}</span>
@@ -78,6 +91,7 @@ function AddProductForm() {
           {...register('price', { valueAsNumber: true })}
           className={errors.price ? 'error' : ''}
           placeholder="Enter price"
+          disabled={isLoading}
         />
         {errors.price && (
           <span className="error-message">{errors.price.message}</span>
@@ -91,6 +105,7 @@ function AddProductForm() {
           className={errors.description ? 'error' : ''}
           placeholder="Enter product description"
           rows="3"
+          disabled={isLoading}
         />
         {errors.description && (
           <span className="error-message">{errors.description.message}</span>
@@ -102,6 +117,7 @@ function AddProductForm() {
         <select
           {...register('category')}
           className={errors.category ? 'error' : ''}
+          disabled={isLoading}
         >
           <option value="">Select a category</option>
           <option value="electronics">Electronics</option>
@@ -115,20 +131,25 @@ function AddProductForm() {
       </div>
 
       <div className="form-group">
-        <label>Image URL (Optional)</label>
+        <label>Image URL <span className="optional">(Optional)</span></label>
         <input
           type="url"
           {...register('image')}
           className={errors.image ? 'error' : ''}
-          placeholder="https://example.com/image.jpg"
+          placeholder="https://example.com/image.jpg (leave empty for default)"
+          disabled={isLoading}
         />
         {errors.image && (
           <span className="error-message">{errors.image.message}</span>
         )}
+        <small className="hint">
+          💡 Leave empty to use a default placeholder image
+        </small>
       </div>
 
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? '⏳ Adding...' : '➕ Add to Cart'}
+      {/* ✅ Button disabled during loading - Prevents click-spam */}
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? '⏳ Adding...' : '➕ Add to Cart'}
       </button>
     </form>
   );
